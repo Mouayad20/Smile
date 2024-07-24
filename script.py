@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from cvzone.FaceMeshModule import FaceMeshDetector
 
-# Load the image
+# Load the original image
 image_path = "C:\\Users\\HP\\Desktop\\Smile\\face.jpg"
 org = cv2.imread(image_path)
 img = cv2.imread(image_path)
@@ -45,10 +45,34 @@ if faces:
     # Apply the mask to the alpha channel of the original image
     org[:, :, 3] = cv2.bitwise_and(org[:, :, 3], mask_inv)
 
-# Save the result
-cv2.imwrite("C:\\Users\\HP\\Desktop\\Smile\\face_with_transparent_mouth.png", org)
+    # Get the bounding box for the mouth region
+    x, y, w, h = cv2.boundingRect(mouth_landmarks_np)
+    
+    # Load the teeth image
+    teeth_image_path = "C:\\Users\\HP\\Desktop\\Smile\\teeth.png"
+    teeth_img = cv2.imread(teeth_image_path, cv2.IMREAD_UNCHANGED)
+    
+    # Check if teeth image has an alpha channel
+    if teeth_img.shape[2] == 3:
+        # Add an alpha channel if it doesn't exist
+        teeth_img = cv2.cvtColor(teeth_img, cv2.COLOR_BGR2BGRA)
+    
+    # Resize the teeth image to fit the mouth region
+    teeth_img_resized = cv2.resize(teeth_img, (w, h))
+    
+    # Extract the alpha channel from the resized teeth image
+    alpha_teeth = teeth_img_resized[:, :, 3] / 255.0
+    alpha_org = 1.0 - alpha_teeth
+    
+    # Overlay the teeth image onto the mouth region
+    for c in range(0, 3):
+        org[y:y+h, x:x+w, c] = (alpha_teeth * teeth_img_resized[:, :, c] +
+                                alpha_org * org[y:y+h, x:x+w, c])
 
-# Display the image with the transparent mouth region
-cv2.imshow("Image with Transparent Mouth Region", org)
+# Save the result
+cv2.imwrite("C:\\Users\\HP\\Desktop\\Smile\\face_with_teeth.png", org)
+
+# Display the image with the teeth overlay
+cv2.imshow("Image with Teeth Overlay", org)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
